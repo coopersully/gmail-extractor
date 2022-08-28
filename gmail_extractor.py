@@ -6,10 +6,12 @@ import json
 
 
 class GmailExtractor:
-    def helloWorld(self):
+
+    @staticmethod
+    def hello_world():
         print("\nWelcome to Gmail extractor,\ndeveloped by A. Augustin.")
 
-    def initializeVariables(self):
+    def initialize_variables(self):
         self.usr = ""
         self.pwd = ""
         self.mail = object
@@ -20,18 +22,18 @@ class GmailExtractor:
         self.ids = []
         self.idsList = []
 
-    def getLogin(self):
+    def ask_login(self):
         print("\nPlease enter your Gmail log-in details below.")
-        self.usr = input("Email: ")
+        self.usr = input("Email Address: ")
         self.pwd = input("Password: ")
 
-    def attemptLogin(self):
+    def attempt_login(self):
         self.mail = imaplib.IMAP4_SSL("imap.gmail.com", 993)
-        attempt : imaplib.IMAP4
+        attempt: imaplib.IMAP4
         try:
             attempt = self.mail.login(self.usr, self.pwd)
         except imaplib.IMAP4.error as e:
-            print("\nLog-in failed; please log-in with an app-specific password.")
+            print("\nLog-in failed; please log-in with an app-specific password. (" + str(e) + ")")
             print("Learn more about this at https://support.google.com/accounts/answer/185833")
             return False
 
@@ -41,33 +43,36 @@ class GmailExtractor:
             self.destFolder = input("Destination: ")
 
             self.destFolder.replace("\\", "/")
-            if not self.destFolder.endswith("/"): self.destFolder += "/"
+
+            if not self.destFolder.endswith("/"):
+                self.destFolder += "/"
+
             return True
 
         print("\nLog-in failed")
         return False
 
-    def checkIfUsersWantsToContinue(self):
+    def ask_extract(self):
         print("\nWe have found " + str(self.mailCount) + " emails in the mailbox " + self.mailbox + ".")
         return True if input(
             "Do you wish to continue extracting all the emails into " + self.destFolder + "? (y/N) ").lower().strip()[
                        :1] == "y" else False
 
-    def selectMailbox(self):
+    def ask_mailbox(self):
         self.mailbox = input("\nPlease type the name of the mailbox you want to extract, e.g. Inbox: ")
         bin_count = self.mail.select(self.mailbox)[1]
         self.mailCount = int(bin_count[0].decode("utf-8"))
         return True if self.mailCount > 0 else False
 
-    def searchThroughMailbox(self):
-        type, self.data = self.mail.search(None, "ALL")
+    def search_mailbox(self):
+        mailbox_type, self.data = self.mail.search(None, "ALL")
         self.ids = self.data[0]
         self.idsList = self.ids.split()
 
-    def parseEmails(self):
+    def parse_emails(self):
         jsonOutput = {}
         for anEmail in self.data[0].split():
-            type, self.data = self.mail.fetch(anEmail, '(UID RFC822)')
+            mailbox_type, self.data = self.mail.fetch(anEmail, '(UID RFC822)')
             raw = self.data[0][1]
             try:
                 raw_str = raw.decode("utf-8")
@@ -78,7 +83,8 @@ class GmailExtractor:
                     try:
                         raw_str = raw.decode("ascii")  # ASCII ?
                     except UnicodeDecodeError:
-                        pass
+                        print("Failed to decode email; please contact the developer.")
+                        return
 
             msg = email.message_from_string(raw_str)
 
@@ -93,16 +99,18 @@ class GmailExtractor:
             if msg.is_multipart():
                 for part in msg.walk():
                     partType = part.get_content_type()
-                    ## Get Body ##
+
+                    # Get body
                     if partType == "text/plain" and "attachment" not in part:
                         jsonOutput['body'] = part.get_payload()
-                    ## Get Attachments ##
+
+                    # Get attachments
                     if part.get('Content-Disposition') is None:
-                        attchName = part.get_filename()
-                        if bool(attchName):
-                            attchFilePath = str(self.destFolder) + str(uid) + str("/") + str(attchName)
-                            os.makedirs(os.path.dirname(attchFilePath), exist_ok=True)
-                            with open(attchFilePath, "wb") as f:
+                        attachment_name = part.get_filename()
+                        if bool(attachment_name):
+                            attachment_path = str(self.destFolder) + str(uid) + str("/") + str(attachment_name)
+                            os.makedirs(os.path.dirname(attachment_path), exist_ok=True)
+                            with open(attachment_path, "wb") as f:
                                 f.write(part.get_payload(decode=True))
             else:
                 try:
@@ -123,16 +131,27 @@ class GmailExtractor:
                 f.write(outputDump)
 
     def __init__(self):
-        self.initializeVariables()
-        self.helloWorld()
-        self.getLogin()
-        if self.attemptLogin():
-            not self.selectMailbox() and sys.exit()
+
+        # Initialize variables
+        self.usr = ""
+        self.pwd = ""
+        self.mail = object
+        self.mailbox = ""
+        self.mailCount = 0
+        self.destFolder = ""
+        self.data = []
+        self.ids = []
+        self.idsList = []
+
+        self.hello_world()
+        self.ask_login()
+        if self.attempt_login():
+            not self.ask_mailbox() and sys.exit()
         else:
             sys.exit()
-        not self.checkIfUsersWantsToContinue() and sys.exit()
-        self.searchThroughMailbox()
-        self.parseEmails()
+        not self.ask_extract() and sys.exit()
+        self.search_mailbox()
+        self.parse_emails()
 
 
 if __name__ == "__main__":
