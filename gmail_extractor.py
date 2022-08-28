@@ -37,8 +37,10 @@ class GmailExtractor:
 
         if attempt:
             print("\nLog-in successful!")
-            self.destFolder = input(
-                "\nPlease choose a destination folder in the form of /Users/username/dest/ (do not forget trailing slash!): ")
+            print("Please choose a destination folder in the form of, \"/Users/username/dest/:\"")
+            self.destFolder = input("Destination: ")
+
+            self.destFolder.replace("\\", "/")
             if not self.destFolder.endswith("/"): self.destFolder += "/"
             return True
 
@@ -103,8 +105,16 @@ class GmailExtractor:
                             with open(attchFilePath, "wb") as f:
                                 f.write(part.get_payload(decode=True))
             else:
-                jsonOutput['body'] = msg.get_payload(decode=True).decode(
-                    "utf-8")  # Non-multipart email, perhaps no attachments or just text.
+                try:
+                    jsonOutput['body'] = msg.get_payload(decode=True).decode("utf-8")
+                except UnicodeDecodeError:
+                    try:
+                        jsonOutput['body'] = msg.get_payload(decode=True).decode("ISO-8859-1")  # ANSI support
+                    except UnicodeDecodeError:
+                        try:
+                            jsonOutput['body'] = msg.get_payload(decode=True).decode("ascii")  # ASCII ?
+                        except UnicodeDecodeError:
+                            pass
 
             outputDump = json.dumps(jsonOutput)
             emailInfoFilePath = str(self.destFolder) + str(uid) + str("/") + str(uid) + str(".json")
