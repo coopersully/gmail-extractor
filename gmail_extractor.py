@@ -7,10 +7,6 @@ import json
 
 class GmailExtractor:
 
-    @staticmethod
-    def hello_world():
-        print("\nWelcome to Gmail extractor,\ndeveloped by A. Augustin.")
-
     def initialize_variables(self):
         self.usr = ""
         self.pwd = ""
@@ -32,24 +28,30 @@ class GmailExtractor:
         attempt: imaplib.IMAP4
         try:
             attempt = self.mail.login(self.usr, self.pwd)
-        except imaplib.IMAP4.error as e:
-            print("\nLog-in failed; please log-in with an app-specific password. (" + str(e) + ")")
-            print("Learn more about this at https://support.google.com/accounts/answer/185833")
+        except Exception as e:
+            print()
+            print("Login failed! An error occurred.")
+
+            if type(e) == imaplib.IMAP4.error:
+                print("This account requires you to log-in with an app-specific password.")
+                print("Learn more about this at https://support.google.com/accounts/answer/185833")
+            else:
+                print(str(e))
+
             return False
 
         if attempt:
-            print("\nLog-in successful!")
+            print("\nLogin successful!")
             print("Please choose a destination folder in the form of, \"/Users/username/dest/:\"")
             self.destFolder = input("Destination: ")
 
-            self.destFolder.replace("\\", "/")
-
+            # Add trailing slash if it doesn't exist
             if not self.destFolder.endswith("/"):
                 self.destFolder += "/"
-
             return True
 
-        print("\nLog-in failed")
+        print()
+        print("Login failed!")
         return False
 
     def ask_extract(self):
@@ -143,13 +145,21 @@ class GmailExtractor:
         self.ids = []
         self.idsList = []
 
-        self.hello_world()
+        # Request user's login details and attempt to login
         self.ask_login()
         if self.attempt_login():
+            # Query which mailbox to fetch
             not self.ask_mailbox() and sys.exit()
         else:
-            sys.exit()
+            sys.exit() # If login failed
+
+        # Confirm extraction with email count
         not self.ask_extract() and sys.exit()
+
+        '''
+        Get content of all emails and extract subject,
+        body, and attachments to user's given directory.
+        '''
         self.search_mailbox()
         self.parse_emails()
 
