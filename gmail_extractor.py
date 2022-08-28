@@ -4,7 +4,8 @@ import email
 import sys
 import json
 
-class GMAIL_EXTRACTOR():
+
+class GmailExtractor:
     def helloWorld(self):
         print("\nWelcome to Gmail extractor,\ndeveloped by A. Augustin.")
 
@@ -20,25 +21,36 @@ class GMAIL_EXTRACTOR():
         self.idsList = []
 
     def getLogin(self):
-        print("\nPlease enter your Gmail login details below.")
+        print("\nPlease enter your Gmail log-in details below.")
         self.usr = input("Email: ")
         self.pwd = input("Password: ")
 
     def attemptLogin(self):
         self.mail = imaplib.IMAP4_SSL("imap.gmail.com", 993)
-        if self.mail.login(self.usr, self.pwd):
-            print("\nLogon SUCCESSFUL")
-            self.destFolder = input("\nPlease choose a destination folder in the form of /Users/username/dest/ (do not forget trailing slash!): ")
-            if not self.destFolder.endswith("/"): self.destFolder+="/"
-            return True
-        else:
-            print("\nLogon FAILED")
+        attempt : imaplib.IMAP4
+        try:
+            attempt = self.mail.login(self.usr, self.pwd)
+        except imaplib.IMAP4.error as e:
+            print("\nLog-in failed; please log-in with an app-specific password.")
+            print("Learn more about this at https://support.google.com/accounts/answer/185833")
             return False
 
+        if attempt:
+            print("\nLog-in successful!")
+            self.destFolder = input(
+                "\nPlease choose a destination folder in the form of /Users/username/dest/ (do not forget trailing slash!): ")
+            if not self.destFolder.endswith("/"): self.destFolder += "/"
+            return True
+
+        print("\nLog-in failed")
+        return False
+
     def checkIfUsersWantsToContinue(self):
-        print("\nWe have found "+str(self.mailCount)+" emails in the mailbox "+self.mailbox+".")
-        return True if input("Do you wish to continue extracting all the emails into "+self.destFolder+"? (y/N) ").lower().strip()[:1] == "y" else False       
-        
+        print("\nWe have found " + str(self.mailCount) + " emails in the mailbox " + self.mailbox + ".")
+        return True if input(
+            "Do you wish to continue extracting all the emails into " + self.destFolder + "? (y/N) ").lower().strip()[
+                       :1] == "y" else False
+
     def selectMailbox(self):
         self.mailbox = input("\nPlease type the name of the mailbox you want to extract, e.g. Inbox: ")
         bin_count = self.mail.select(self.mailbox)[1]
@@ -59,19 +71,19 @@ class GMAIL_EXTRACTOR():
                 raw_str = raw.decode("utf-8")
             except UnicodeDecodeError:
                 try:
-                    raw_str = raw.decode("ISO-8859-1") # ANSI support
+                    raw_str = raw.decode("ISO-8859-1")  # ANSI support
                 except UnicodeDecodeError:
                     try:
-                        raw_str = raw.decode("ascii") # ASCII ?
+                        raw_str = raw.decode("ascii")  # ASCII ?
                     except UnicodeDecodeError:
                         pass
-						
+
             msg = email.message_from_string(raw_str)
 
             jsonOutput['subject'] = msg['subject']
             jsonOutput['from'] = msg['from']
             jsonOutput['date'] = msg['date']
-            
+
             raw = self.data[0][0]
             raw_str = raw.decode("utf-8")
             uid = raw_str.split()[2]
@@ -86,15 +98,16 @@ class GMAIL_EXTRACTOR():
                     if part.get('Content-Disposition') is None:
                         attchName = part.get_filename()
                         if bool(attchName):
-                            attchFilePath = str(self.destFolder)+str(uid)+str("/")+str(attchName)
+                            attchFilePath = str(self.destFolder) + str(uid) + str("/") + str(attchName)
                             os.makedirs(os.path.dirname(attchFilePath), exist_ok=True)
                             with open(attchFilePath, "wb") as f:
                                 f.write(part.get_payload(decode=True))
             else:
-                jsonOutput['body'] = msg.get_payload(decode=True).decode("utf-8") # Non-multipart email, perhaps no attachments or just text.
+                jsonOutput['body'] = msg.get_payload(decode=True).decode(
+                    "utf-8")  # Non-multipart email, perhaps no attachments or just text.
 
             outputDump = json.dumps(jsonOutput)
-            emailInfoFilePath = str(self.destFolder)+str(uid)+str("/")+str(uid)+str(".json")
+            emailInfoFilePath = str(self.destFolder) + str(uid) + str("/") + str(uid) + str(".json")
             os.makedirs(os.path.dirname(emailInfoFilePath), exist_ok=True)
             with open(emailInfoFilePath, "w") as f:
                 f.write(outputDump)
@@ -111,5 +124,6 @@ class GMAIL_EXTRACTOR():
         self.searchThroughMailbox()
         self.parseEmails()
 
+
 if __name__ == "__main__":
-    run = GMAIL_EXTRACTOR()
+    run = GmailExtractor()
