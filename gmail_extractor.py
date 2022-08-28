@@ -7,17 +7,6 @@ import json
 
 class GmailExtractor:
 
-    def initialize_variables(self):
-        self.usr = ""
-        self.pwd = ""
-        self.mail = object
-        self.mailbox = ""
-        self.mailCount = 0
-        self.destFolder = ""
-        self.data = []
-        self.ids = []
-        self.idsList = []
-
     def ask_login(self):
         print("\nPlease enter your Gmail log-in details below.")
         self.usr = input("Email Address: ")
